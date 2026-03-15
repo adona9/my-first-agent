@@ -1,0 +1,4 @@
+The reason knowledge graphs are powerful in AI architectures isn't just that they store structured facts — it's that they make reasoning inspectable. When your system flags a trade record anomaly, you can point to the specific SHACL constraint that was violated, which traces back to a specific rule in the graph, which was authored by a specific SME. That's a full audit trail that a pure LLM answer can never give you.
+
+Tools must always indicate what they do, and when to use them.
+
