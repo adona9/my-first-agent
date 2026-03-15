@@ -145,6 +145,34 @@ The same MCP server can be consumed by Claude Code, Cursor, a LangChain agent, o
 
 ---
 
+### 6. `combined_agent.py` — Everything together
+
+Combines LangChain, persistent memory, and MCP into a single agent. A general-purpose assistant that can query the database and remember personal context across runs.
+
+```bash
+uv run python combined_agent.py "My name is Alessandro. What tables do you have access to?"
+uv run python combined_agent.py "Who directed the most movies? Also, what do you know about me?"
+uv run python combined_agent.py "What are the top 3 stocks by market cap?"
+```
+
+**What it teaches:**
+
+The main integration challenge is that each system uses a different tool abstraction:
+
+| System | Tool format |
+|---|---|
+| Raw SDK | Plain dicts: `{"name": ..., "input_schema": ...}` |
+| LangChain | `BaseTool` instances: `@tool` or `StructuredTool` |
+| MCP | `mcp.types.Tool`: `.name`, `.description`, `.inputSchema` |
+
+The solution is `_mcp_tool_to_langchain()`: convert each MCP tool into a LangChain `StructuredTool` by (1) building a Pydantic model from its JSON Schema, and (2) wrapping `session.call_tool()` as an async function. The resulting tools are indistinguishable from `@tool`-decorated functions as far as `create_agent` is concerned.
+
+A second consequence of mixing async MCP tools with LangChain: `agent.stream()` (sync) can't invoke async tools, so you must use `agent.astream()` instead — which is fine since the whole agent runs inside `async def run_agent()`.
+
+**Files:** `combined_agent.py` (+ `mcp_db_server.py`, `memory_store.py`)
+
+---
+
 ## Concept map
 
 ```
@@ -157,7 +185,9 @@ db_agent.py             ← structured output, error recovery, token counting
        │
        ├──► memory_agent.py         ← persistence across runs
        │
-       └──► mcp_agent.py            ← tools in a separate server process
+       ├──► mcp_agent.py            ← tools in a separate server process
+       │
+       └──► combined_agent.py       ← LangChain + memory + MCP together
 ```
 
 ## Project structure
@@ -172,7 +202,8 @@ my-first-agent/
 ├── langchain_db_agent.py   # Example 3: LangChain + LangGraph
 ├── memory_agent.py         # Example 4: persistent memory
 ├── memory_store.py
-├── mcp_db_server.py        # Example 5 (server): tools via MCP
-├── mcp_agent.py            # Example 5 (client): agent that uses MCP server
+├── mcp_db_server.py        # Example 5+6 (server): tools via MCP
+├── mcp_agent.py            # Example 5 (client): raw SDK + MCP
+├── combined_agent.py       # Example 6: LangChain + memory + MCP
 └── pyproject.toml
 ```
